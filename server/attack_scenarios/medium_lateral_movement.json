@@ -1,0 +1,117 @@
+{
+  "scenario_id": "hard_advanced_persistence",
+  "description": "Advanced persistent attack involving privilege escalation, backdoor creation, log tampering, and data exfiltration",
+
+  "services": ["IAM", "Lambda", "CloudTrail", "EC2", "S3"],
+
+  "attack_path": [1, 3, 4, 5, 6, 7, 8, 9],
+
+  "logs": [
+    {
+      "timestamp": "2025-03-22T08:00:00Z",
+      "event_source": "iam.amazonaws.com",
+      "event_name": "CreateUser",
+      "user_identity": {"type": "Root", "userName": "root"},
+      "source_ip": "203.0.113.88",
+      "request_parameters": {"userName": "temp_admin"},
+      "response_elements": {"user": {"userName": "temp_admin"}},
+      "is_malicious": false
+    },
+    {
+      "timestamp": "2025-03-22T08:05:00Z",
+      "event_source": "iam.amazonaws.com",
+      "event_name": "AttachUserPolicy",
+      "user_identity": {"type": "Root", "userName": "root"},
+      "source_ip": "203.0.113.88",
+      "request_parameters": {"userName": "temp_admin", "policyArn": "arn:aws:iam::aws:policy/AdministratorAccess"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-22T08:10:00Z",
+      "event_source": "iam.amazonaws.com",
+      "event_name": "CreateAccessKey",
+      "user_identity": {"type": "Root", "userName": "root"},
+      "source_ip": "203.0.113.88",
+      "request_parameters": {"userName": "temp_admin"},
+      "response_elements": {"accessKey": {"accessKeyId": "AKIA..."}},
+      "is_malicious": false
+    },
+    {
+      "timestamp": "2025-03-22T08:20:00Z",
+      "event_source": "lambda.amazonaws.com",
+      "event_name": "CreateFunction",
+      "user_identity": {"type": "IAMUser", "userName": "temp_admin"},
+      "source_ip": "203.0.113.99",
+      "request_parameters": {"functionName": "backdoor-function"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-22T08:30:00Z",
+      "event_source": "lambda.amazonaws.com",
+      "event_name": "AddPermission",
+      "user_identity": {"type": "IAMUser", "userName": "temp_admin"},
+      "source_ip": "203.0.113.99",
+      "request_parameters": {"principal": "*"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-22T08:35:00Z",
+      "event_source": "cloudtrail.amazonaws.com",
+      "event_name": "DeleteTrail",
+      "user_identity": {"type": "IAMUser", "userName": "temp_admin"},
+      "source_ip": "203.0.113.99",
+      "request_parameters": {"trailName": "security-trail"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-22T08:40:00Z",
+      "event_source": "s3.amazonaws.com",
+      "event_name": "GetObject",
+      "user_identity": {"type": "IAMUser", "userName": "temp_admin"},
+      "source_ip": "203.0.113.99",
+      "request_parameters": {"bucketName": "internal-docs", "key": "strategy.pdf"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-22T08:45:00Z",
+      "event_source": "ec2.amazonaws.com",
+      "event_name": "AuthorizeSecurityGroupIngress",
+      "user_identity": {"type": "IAMUser", "userName": "temp_admin"},
+      "source_ip": "203.0.113.99",
+      "request_parameters": {"cidr": "0.0.0.0/0"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-22T08:50:00Z",
+      "event_source": "ec2.amazonaws.com",
+      "event_name": "RunInstances",
+      "user_identity": {"type": "IAMUser", "userName": "temp_admin"},
+      "source_ip": "203.0.113.99",
+      "request_parameters": {"instanceType": "c5.large"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-22T09:00:00Z",
+      "event_source": "cloudtrail.amazonaws.com",
+      "event_name": "UpdateTrail",
+      "user_identity": {"type": "IAMUser", "userName": "temp_admin"},
+      "source_ip": "203.0.113.99",
+      "request_parameters": {"includeGlobalServiceEvents": false},
+      "response_elements": {},
+      "is_malicious": true
+    }
+  ],
+
+  "goal": {
+    "identify_user": "temp_admin",
+    "attack_chain": ["IAM", "Lambda", "CloudTrail", "S3", "EC2"],
+    "root_cause": "Privilege escalation via over-permissive IAM policy enabled persistent backdoor and data exfiltration"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "scenario_id": "easy_iam_escalation",
+  "description": "Attacker exploits an overprivileged IAM role to access sensitive S3 bucket data",
+
+  "services": ["IAM", "S3"],
+
+  "attack_path": [0, 1, 2],
+
+  "logs": [
+    {
+      "timestamp": "2025-03-20T10:00:00Z",
+      "event_source": "iam.amazonaws.com",
+      "event_name": "AssumeRole",
+      "user_identity": {"type": "IAMUser", "userName": "attacker@example.com"},
+      "source_ip": "203.0.113.45",
+      "request_parameters": {"roleArn": "arn:aws:iam::123456789012:role/DeveloperRole"},
+      "response_elements": {"credentials": {"accessKeyId": "ASIA..."}},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-20T10:02:00Z",
+      "event_source": "s3.amazonaws.com",
+      "event_name": "GetObject",
+      "user_identity": {"type": "AssumedRole", "roleName": "DeveloperRole"},
+      "source_ip": "203.0.113.45",
+      "request_parameters": {"bucketName": "secret-bucket", "key": "config.json"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-20T10:03:00Z",
+      "event_source": "s3.amazonaws.com",
+      "event_name": "GetObject",
+      "user_identity": {"type": "AssumedRole", "roleName": "DeveloperRole"},
+      "source_ip": "203.0.113.45",
+      "request_parameters": {"bucketName": "secret-bucket", "key": "credentials.txt"},
+      "response_elements": {},
+      "is_malicious": true
+    },
+    {
+      "timestamp": "2025-03-20T09:55:00Z",
+      "event_source": "iam.amazonaws.com",
+      "event_name": "ListUsers",
+      "user_identity": {"type": "IAMUser", "userName": "legit_user"},
+      "source_ip": "192.168.1.100",
+      "request_parameters": {},
+      "response_elements": {},
+      "is_malicious": false
+    }
+  ],
+
+  "goal": {
+    "identify_user": "attacker@example.com",
+    "root_cause": "Overprivileged IAM role allowed unauthorized S3 access"
+  }
+}

@@ -1,0 +1,2 @@
+[console_scripts]
+server = cloud_forensic_env.server.app:main

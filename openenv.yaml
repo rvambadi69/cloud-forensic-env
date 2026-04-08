@@ -1,0 +1,42 @@
+name: cloud_forensic_env
+version: 1.0.0
+description: AI agent investigates cloud audit logs to reconstruct attack paths
+author: Your Team Name
+
+entrypoint: server.cloud_forensic_env_environment:make_env
+
+tags:
+  - devsecops
+  - cloud-security
+  - forensics
+
+tasks:
+  - id: easy_iam_escalation
+    name: IAM Privilege Escalation Detection
+    difficulty: easy
+    max_steps: 10
+  - id: medium_lateral_movement
+    name: Cross-Service Lateral Movement
+    difficulty: medium
+    max_steps: 15
+  - id: hard_advanced_persistence
+    name: Multi-Stage Attack with Log Tampering
+    difficulty: hard
+    max_steps: 25
+
+observation_space:
+  type: object
+  properties:
+    current_log_index: integer
+    total_logs: integer
+    investigation_so_far: string
+    services: array
+    alerts: array
+
+action_space:
+  type: object
+  properties:
+    action_type: string
+    notes: optional string
+    flagged_event_ids: optional array
+    reconstructed_path: optional array

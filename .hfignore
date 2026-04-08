@@ -1,0 +1,24 @@
+# Ignore virtual environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Git
+.git/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Outputs
+outputs/
+
+# Large binaries
+*.exe
+*.dll
