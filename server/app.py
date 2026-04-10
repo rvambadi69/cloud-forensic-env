@@ -9,6 +9,7 @@ FastAPI application for Cloud Forensic Environment
 import os
 import socket
 from fastapi import Response
+from fastapi.responses import RedirectResponse
 
 try:
     from openenv.core.env_server.http_server import create_app
@@ -41,6 +42,11 @@ async def root() -> dict:
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon() -> Response:
     return Response(status_code=204)
+
+
+@app.get("/web", include_in_schema=False)
+async def web() -> RedirectResponse:
+    return RedirectResponse(url="/docs", status_code=307)
 
 
 def _is_port_available(host: str, port: int) -> bool:

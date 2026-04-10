@@ -170,12 +170,16 @@ It uses `openai.OpenAI` and reads:
 Run example:
 
 ```powershell
+Set-Location 'C:\Users\Rahul V\OneDrive\Desktop\MSRIT_6th_Sem_Notes-main\openenv_hackathon\cloud_forensic_env'
 $env:HF_TOKEN="<your_token>"
 $env:API_BASE_URL="https://router.huggingface.co/v1"
 $env:MODEL_NAME="Qwen/Qwen2.5-72B-Instruct"
 $env:TASK_NAME="easy"
-..\scaler\Scripts\python.exe .\inference.py
+& "C:\Users\Rahul V\openenv_env\Scripts\activate.ps1"
+python .\inference.py
 ```
+
+Use the existing virtual environment at `C:\Users\Rahul V\openenv_env`. Do not create a new one for this project.
 
 Inference output format:
 - `[START] task=<task_name> env=<benchmark> model=<model_name>`
@@ -199,10 +203,22 @@ Build:
 docker build -t cloud-forensic-env -f server/Dockerfile .
 ```
 
+The root-level `Dockerfile` also supports the exact command used by the hackathon checks:
+
+```bash
+docker build -t cloud-forensic-env .
+```
+
 Run:
 
 ```bash
 docker run --rm -p 8000:8000 cloud-forensic-env
+```
+
+Or, for the exact validator-style command:
+
+```bash
+docker run -p 8000:8000 cloud-forensic-env
 ```
 
 Verify:

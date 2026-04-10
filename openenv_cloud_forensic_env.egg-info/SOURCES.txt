@@ -2,6 +2,7 @@ README.md
 __init__.py
 client.py
 inference.py
+models.py
 pyproject.toml
 ./__init__.py
 ./client.py
@@ -16,3 +17,6 @@ openenv_cloud_forensic_env.egg-info/top_level.txt
 server/__init__.py
 server/app.py
 server/cloud_forensic_env_environment.py
+server/attack_scenarios/easy_iam_escalation.json
+server/attack_scenarios/hard_advanced_persistence.json
+server/attack_scenarios/medium_lateral_movement.json
