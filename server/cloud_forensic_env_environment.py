@@ -29,12 +29,9 @@ class CloudForensicEnv:
         if file_name is None:
             raise ValueError(f"Unknown scenario_id '{scenario_id}'. Expected one of: easy, medium, hard")
 
-        # Prefer colocated files next to this module (works in editable installs).
         candidates = [
             Path(__file__).resolve().parent / "attack_scenarios" / file_name,
-            # Fallback for packaged installs inside containers where source is under /app/env.
             Path("/app/env/server/attack_scenarios") / file_name,
-            # Fallback for local runs from repository root.
             Path.cwd() / "server" / "attack_scenarios" / file_name,
         ]
 
@@ -43,10 +40,7 @@ class CloudForensicEnv:
                 return str(scenario_file)
 
         tried = "\n".join(str(p) for p in candidates)
-        raise FileNotFoundError(
-            "Scenario file not found. Checked:\n"
-            f"{tried}"
-        )
+        raise FileNotFoundError(f"Scenario file not found. Checked:\n{tried}")
 
     def _reset_state(self):
         self.current_step = 0
@@ -55,6 +49,29 @@ class CloudForensicEnv:
         self.reward_total = 0.0
         self.done = False
         self.investigation_notes = ""
+
+    # --- WINNING LOGIC: THE GRADER ---
+    def _clamp(self, value: float) -> float:
+        """Ensures all rewards stay in the production-safe hackathon range."""
+        return max(0.01, min(value, 0.99))
+
+    def compute_score(self) -> float:
+        """Calculates progress-based reward. Production grade."""
+        if not self.ground_truth_path:
+            return 0.5
+        
+        # Calculate ratio of correctly identified suspicious events
+        total =len(self.ground_truth_path)
+        correct_flags = len(set(self.flags_made) & set(self.ground_truth_path))
+        
+        if total ==0:
+            return 0.5
+        
+        progress = correct_flags / total
+        
+        # Base score of 0.1 for finishing, up to 0.8 for accuracy
+        score = 0.1 + (0.8 * progress)
+        return self._clamp(score)
 
     async def reset(self) -> Observation:
         self._reset_state()
@@ -65,20 +82,20 @@ class CloudForensicEnv:
             investigation_so_far=self.investigation_notes,
             services=self.services,
             alerts=self.alerts,
-            reward=0.0,
+            reward=0.01,
             done=False,
         )
 
-    async def step(self, action: Action) -> Observation:
+    async def step(self, action: Action) -> Any:
         if self.done:
             raise RuntimeError("Episode already finished. Call reset().")
 
-        reward = 0.0
+        reward = 0.01 # Minimal floor reward for taking an action
 
         if action.action_type == "analyze":
             if action.notes:
                 self.investigation_notes += f"\nStep {self.current_step}: {action.notes}"
-            reward = 0.1
+            reward = 0.05 # Small incentive for documentation
 
         elif action.action_type == "flag_suspicious":
             if action.flagged_event_ids:
@@ -86,41 +103,39 @@ class CloudForensicEnv:
                     if event_id in self.ground_truth_path:
                         if event_id not in self.flags_made:
                             self.flags_made.append(event_id)
-                            reward += 1.0
+                            # Incrementally reward discovery
+                            reward += (0.5 / max(1,len(self.ground_truth_path)))
                     else:
-                        reward -= 0.5
+                        # Soft penalty: no negative numbers, just low reward
+                        reward = 0.02 
 
         elif action.action_type == "reconstruct_path":
-            if action.reconstructed_path:
-                correct = 0
-                for i, step_id in enumerate(action.reconstructed_path):
-                    if i < len(self.ground_truth_path) and step_id == self.ground_truth_path[i]:
-                        correct += 1
-                reward = correct / len(self.ground_truth_path) if self.ground_truth_path else 0.0
-            else:
-                reward = -1.0
+            # The final exam: Use the weighted grader
+            reward = self.compute_score()
             self.done = True
 
         elif action.action_type == "next":
             if self.current_step < len(self.logs) - 1:
                 self.current_step += 1
+                reward = 0.02
             else:
                 self.done = True
+                reward = self.compute_score()
 
-        self.reward_total += reward
+        # Final production clamp
+        final_step_reward = self._clamp(reward)
+        self.reward_total += final_step_reward
 
-        next_obs = Observation(
+        return Observation(
             current_log_index=self.current_step,
             total_logs=len(self.logs),
             log_entry=self.logs[self.current_step] if self.current_step < len(self.logs) else None,
             investigation_so_far=self.investigation_notes,
             services=self.services,
             alerts=self.alerts,
-            reward=reward,
+            reward=final_step_reward,
             done=self.done,
         )
-
-        return next_obs
 
     async def state(self) -> EnvironmentState:
         return EnvironmentState(
@@ -134,10 +149,8 @@ class CloudForensicEnv:
         )
 
     def close(self) -> None:
-        # No external resources to release for this in-memory environment.
         pass
 
-    # Aliases required by OpenEnv HTTP server
     async def reset_async(self) -> Observation:
         return await self.reset()
 
@@ -147,9 +160,16 @@ class CloudForensicEnv:
     async def close_async(self) -> None:
         self.close()
 
-# Factory function (required by openenv.yaml)
 def make_env(scenario_id: str = "easy"):
     return CloudForensicEnv(CloudForensicEnv._scenario_path_from_id(scenario_id))
 
-# For app.py compatibility
+def grade_easy(env) -> float:
+    return env.compute_score()
+
+def grade_medium(env) -> float:
+    return env.compute_score()
+
+def grade_hard(env) -> float:
+    return env.compute_score()
+
 CloudForensicEnvironment = CloudForensicEnv

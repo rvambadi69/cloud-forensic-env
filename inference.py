@@ -20,7 +20,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN", "")
 
-TASK_NAME = os.getenv("TASK_NAME", "easy")
+TASK_NAME = os.getenv("OPENENV_SCENARIO", "easy")
 MAX_STEPS = 20
 TEMPERATURE = 0.3
 MAX_TOKENS = 300
@@ -199,7 +199,7 @@ async def main():
             history.append(f"Step {step}: {action.action_type} -> reward {reward:.2f}")
 
         score = sum(rewards) / len(rewards) if rewards else 0.0
-        success = score >= SUCCESS_SCORE_THRESHOLD
+        success = rewards[-1] > 0.5 if rewards else False
 
     except Exception:
         success = False
