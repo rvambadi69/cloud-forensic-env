@@ -136,17 +136,25 @@ class CloudForensicEnv:
             reward=final_step_reward,
             done=self.done,
         )
+    @property
+    def state(self):
+        return {
+            "scenario_id": self.scenario_data['scenario_id'],
+            "current_step": self.current_step,
+            "logs_analyzed": self.logs_analyzed,
+            "flags_made": self.flags_made,
+            "attack_path_ground_truth": self.ground_truth_path,
+            "reward_accumulated": self.reward_total,
+            "done": self.done
+    }
+    
+    def get_metadata(self):
+        return {
+            "name": "cloud_forensic_env",
+            "description": "Cloud forensic investigation environment"    
+       }
 
-    async def state(self) -> EnvironmentState:
-        return EnvironmentState(
-            scenario_id=self.scenario_data['scenario_id'],
-            current_step=self.current_step,
-            logs_analyzed=self.logs_analyzed,
-            flags_made=self.flags_made,
-            attack_path_ground_truth=self.ground_truth_path,
-            reward_accumulated=self.reward_total,
-            done=self.done,
-        )
+
 
     def close(self) -> None:
         pass
