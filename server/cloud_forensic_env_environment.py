@@ -53,7 +53,7 @@ class CloudForensicEnv:
     # --- WINNING LOGIC: THE GRADER ---
     def _clamp(self, value: float) -> float:
         """Ensures all rewards stay in the production-safe hackathon range."""
-        return max(0.01, min(value, 0.99))
+        return max(0.05, min(value, 0.95))
 
     def compute_score(self) -> float:
         """Calculates progress-based reward. Production grade."""
@@ -62,16 +62,24 @@ class CloudForensicEnv:
         
         # Calculate ratio of correctly identified suspicious events
         total =len(self.ground_truth_path)
-        correct_flags = len(set(self.flags_made) & set(self.ground_truth_path))
-        
         if total ==0:
             return 0.5
-        
+
+        correct_flags = len(set(self.flags_made) & set(self.ground_truth_path))
+        wrong_flags = len(set(self.flags_made) - set(self.ground_truth_path))
+
         progress = correct_flags / total
+        penalty = wrong_flags / total
         
         # Base score of 0.1 for finishing, up to 0.8 for accuracy
-        score = 0.1 + (0.8 * progress)
-        return self._clamp(score)
+        score = 0.2 + (0.6 * progress) - (0.2 * penalty)
+
+        if score <= 0.0:
+            score = 0.05
+        elif score >=1.0:
+            score =0.95
+
+        return score
 
     async def reset(self) -> Observation:
         self._reset_state()
@@ -171,13 +179,27 @@ class CloudForensicEnv:
 def make_env(scenario_id: str = "easy"):
     return CloudForensicEnv(CloudForensicEnv._scenario_path_from_id(scenario_id))
 
+
 def grade_easy(env) -> float:
-    return env.compute_score()
+    base = env.compute_score()
+    return max(0.05, min(0.85, base))
+
 
 def grade_medium(env) -> float:
-    return env.compute_score()
+    base = env.compute_score()
+    penalty = 0.1 if len(env.flags_made) < len(env.ground_truth_path) else 0.0
+    return max(0.05, min(0.9, base - penalty))
+
 
 def grade_hard(env) -> float:
-    return env.compute_score()
+    base = env.compute_score()
+
+    # penalize incomplete reconstruction
+    path_match = len(set(env.flags_made) & set(env.ground_truth_path))
+    completeness = path_match / max(1, len(env.ground_truth_path))
+
+    adjusted = base * completeness * 0.9
+
+    return max(0.05, min(0.95, adjusted))
 
 CloudForensicEnvironment = CloudForensicEnv
