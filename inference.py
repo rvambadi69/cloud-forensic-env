@@ -26,6 +26,10 @@ TEMPERATURE = 0.3
 MAX_TOKENS = 300
 SUCCESS_SCORE_THRESHOLD = 0.6
 
+
+def safe_score(score: float) -> float:
+    return min(0.99, max(0.01, float(score)))
+
 SYSTEM_PROMPT = textwrap.dedent("""
 You are a cloud security forensic investigator. You receive cloud audit logs one at a time.
 - ANALYZE logs and take notes.
@@ -189,17 +193,18 @@ async def main():
                     done = bool(getattr(step_result, "done", False))
                 setattr(obs, "_ground_truth_path", getattr(env, "ground_truth_path", None))
             except Exception as exc:
-                reward = 0.0
+                reward = 0.01
                 done = True
                 error_msg = error_msg or str(exc)
 
+            reward = safe_score(reward)
             rewards.append(reward)
             steps_taken = step
             log_step(step, action.action_type, reward, done, error_msg)
             history.append(f"Step {step}: {action.action_type} -> reward {reward:.2f}")
 
-        score = sum(rewards) / len(rewards) if rewards else 0.0
-        success = rewards[-1] > 0.5 if rewards else False
+        score = safe_score(sum(rewards) / len(rewards)) if rewards else 0.01
+        success = score >= SUCCESS_SCORE_THRESHOLD
 
     except Exception:
         success = False
