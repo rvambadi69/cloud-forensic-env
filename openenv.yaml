@@ -11,18 +11,21 @@ tags:
   - forensics
 
 tasks:
-  - id: easy_iam_escalation
+  - id: easy
     name: IAM Privilege Escalation Detection
     difficulty: easy
     max_steps: 10
-  - id: medium_lateral_movement
+    grader: server.cloud_forensic_env_environment:grade_easy
+  - id: medium
     name: Cross-Service Lateral Movement
     difficulty: medium
     max_steps: 15
-  - id: hard_advanced_persistence
+    grader: server.cloud_forensic_env_environment:grade_medium
+  - id: hard
     name: Multi-Stage Attack with Log Tampering
     difficulty: hard
     max_steps: 25
+    grader: server.cloud_forensic_env_environment:grade_hard
 
 observation_space:
   type: object
