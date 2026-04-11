@@ -51,35 +51,34 @@ class CloudForensicEnv:
         self.investigation_notes = ""
 
     # --- WINNING LOGIC: THE GRADER ---
-    def _clamp(self, value: float) -> float:
-        """Ensures all rewards stay in the production-safe hackathon range."""
-        return max(0.05, min(value, 0.95))
+    @staticmethod
+    def _safe_score(value: float) -> float:
+        """Clamp to strict (0, 1) exclusive range required by OpenEnv validator.
+
+        The hackathon validator rejects scores that are exactly 0.0 or 1.0.
+        We use 0.001–0.999 with rounding to eliminate floating-point boundary issues.
+        """
+        return max(0.001, min(0.999, round(float(value), 6)))
 
     def compute_score(self) -> float:
-        """Calculates progress-based reward. Production grade."""
+        """Calculates progress-based reward. Always returns strictly (0, 1)."""
         if not self.ground_truth_path:
-            return 0.5
-        
-        # Calculate ratio of correctly identified suspicious events
-        total =len(self.ground_truth_path)
-        if total ==0:
-            return 0.5
+            return self._safe_score(0.5)
+
+        total = len(self.ground_truth_path)
+        if total == 0:
+            return self._safe_score(0.5)
 
         correct_flags = len(set(self.flags_made) & set(self.ground_truth_path))
         wrong_flags = len(set(self.flags_made) - set(self.ground_truth_path))
 
         progress = correct_flags / total
         penalty = wrong_flags / total
-        
-        # Base score of 0.1 for finishing, up to 0.8 for accuracy
+
+        # Base score of 0.2 for participation, up to 0.8 for accuracy
         score = 0.2 + (0.6 * progress) - (0.2 * penalty)
 
-        if score <= 0.0:
-            score = 0.05
-        elif score >=1.0:
-            score =0.95
-
-        return score
+        return self._safe_score(score)
 
     async def reset(self) -> Observation:
         self._reset_state()
@@ -130,8 +129,8 @@ class CloudForensicEnv:
                 self.done = True
                 reward = self.compute_score()
 
-        # Final production clamp
-        final_step_reward = self._clamp(reward)
+        # Final production clamp — strict (0, 1) exclusive
+        final_step_reward = self._safe_score(reward)
         self.reward_total += final_step_reward
 
         return Observation(
@@ -181,25 +180,28 @@ def make_env(scenario_id: str = "easy"):
 
 
 def grade_easy(env) -> float:
+    """Grader for easy task — lenient scoring, clamped to strict (0, 1)."""
     base = env.compute_score()
-    return max(0.05, min(0.85, base))
+    # Easy task: cap at 0.85 to leave headroom
+    return CloudForensicEnv._safe_score(min(0.85, base))
 
 
 def grade_medium(env) -> float:
+    """Grader for medium task — moderate penalty, clamped to strict (0, 1)."""
     base = env.compute_score()
+    # Penalize incomplete flag coverage
     penalty = 0.1 if len(env.flags_made) < len(env.ground_truth_path) else 0.0
-    return max(0.05, min(0.9, base - penalty))
+    return CloudForensicEnv._safe_score(min(0.9, base - penalty))
 
 
 def grade_hard(env) -> float:
+    """Grader for hard task — strict scoring, clamped to strict (0, 1)."""
     base = env.compute_score()
-
-    # penalize incomplete reconstruction
+    # Penalize incomplete reconstruction
     path_match = len(set(env.flags_made) & set(env.ground_truth_path))
     completeness = path_match / max(1, len(env.ground_truth_path))
-
     adjusted = base * completeness * 0.9
+    return CloudForensicEnv._safe_score(adjusted)
 
-    return max(0.05, min(0.95, adjusted))
 
 CloudForensicEnvironment = CloudForensicEnv

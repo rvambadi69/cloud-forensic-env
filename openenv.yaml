@@ -1,36 +1,41 @@
+spec_version: 1
+
 name: cloud_forensic_env
 
 version: 1.0.0
 
 description: AI agent investigates cloud audit logs to reconstruct attack paths
 
-author: Your Team Name
+author: Vijaykumar Lokappa Konapur
 
 entrypoint: server.cloud_forensic_env_environment:make_env
 
 tags:
-- devsecops
-- cloud-security
-- forensics
+  - devsecops
+  - cloud-security
+  - forensics
 
 tasks:
-- id: easy_iam_escalation
-  name: IAM Privilege Escalation Detection
-  difficulty: easy
-  max_steps: 10
-  grader: server.cloud_forensic_env_environment:grade_easy
+  - id: easy_iam_escalation
+    name: IAM Privilege Escalation Detection
+    description: Detect IAM privilege escalation in AWS CloudTrail audit logs by analyzing user actions and flagging suspicious role assumptions
+    difficulty: easy
+    max_steps: 10
+    grader: server.cloud_forensic_env_environment:grade_easy
 
-- id: medium_lateral_movement
-  name: Cross-Service Lateral Movement
-  difficulty: medium
-  max_steps: 15
-  grader: server.cloud_forensic_env_environment:grade_medium
+  - id: medium_lateral_movement
+    name: Cross-Service Lateral Movement
+    description: Identify cross-service lateral movement across AWS services by tracing attacker activity through multiple cloud resources
+    difficulty: medium
+    max_steps: 15
+    grader: server.cloud_forensic_env_environment:grade_medium
 
-- id: hard_advanced_persistence
-  name: Multi-Stage Attack with Log Tampering
-  difficulty: hard
-  max_steps: 25
-  grader: server.cloud_forensic_env_environment:grade_hard
+  - id: hard_advanced_persistence
+    name: Multi-Stage Attack with Log Tampering
+    description: Reconstruct a multi-stage attack path involving advanced persistence techniques and potential log tampering across services
+    difficulty: hard
+    max_steps: 25
+    grader: server.cloud_forensic_env_environment:grade_hard
 
 observation_space:
   type: object
