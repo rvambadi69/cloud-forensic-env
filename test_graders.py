@@ -17,6 +17,7 @@ from server.cloud_forensic_env_environment import (
     grade_hard,
     make_env,
 )
+from server.graders import EasyGrader, MediumGrader, HardGrader
 
 PASS = "\u2705"
 FAIL = "\u274c"
@@ -120,6 +121,31 @@ def test_graders():
         check_strict_range(f"{grader_name}({scenario_id})/no_flags", score)
 
 
+def test_grader_classes():
+    print("\n=== Test EasyGrader/MediumGrader/HardGrader classes ===")
+
+    for scenario_id, grader, grader_name in [
+        ("easy", EasyGrader(), "EasyGrader"),
+        ("medium", MediumGrader(), "MediumGrader"),
+        ("hard", HardGrader(), "HardGrader"),
+    ]:
+        env = make_env(scenario_id)
+
+        env._reset_state()
+        score = grader.grade(env)
+        check_strict_range(f"{grader_name}({scenario_id})/empty", score)
+
+        env._reset_state()
+        env.flags_made = list(env.ground_truth_path)
+        score = grader.grade(env)
+        check_strict_range(f"{grader_name}({scenario_id})/all_correct", score)
+
+        env._reset_state()
+        env.flags_made = [999, 998, 997]
+        score = grader.grade(env)
+        check_strict_range(f"{grader_name}({scenario_id})/all_wrong", score)
+
+
 def test_openenv_yaml():
     print("\n=== Test openenv.yaml schema ===")
     yaml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "openenv.yaml")
@@ -152,6 +178,14 @@ def test_openenv_yaml():
         if not has_desc:
             errors.append(f"Task {tid} missing description")
 
+    grader_refs = [task.get("grader") for task in tasks if task.get("grader")]
+    unique_grader_refs = len(set(grader_refs))
+    graders_unique = unique_grader_refs == len(grader_refs)
+    status_unique = PASS if graders_unique else FAIL
+    print(f"  {status_unique} Unique graders per task: {unique_grader_refs}/{len(grader_refs)}")
+    if not graders_unique:
+        errors.append("Each task must have a distinct grader reference")
+
 
 if __name__ == "__main__":
     print("=" * 60)
@@ -161,6 +195,7 @@ if __name__ == "__main__":
     test_safe_score()
     test_compute_score_edge_cases()
     test_graders()
+    test_grader_classes()
     test_openenv_yaml()
     
     print("\n" + "=" * 60)
