@@ -2,7 +2,10 @@ import json
 import os
 from typing import Dict, Any
 from pathlib import Path
-from cloud_forensic_env.models import Observation, Action, EnvironmentState, LogEntry
+try:
+    from cloud_forensic_env.models import Observation, Action, EnvironmentState, LogEntry
+except ImportError:
+    from models import Observation, Action, EnvironmentState, LogEntry
 
 class CloudForensicEnv:
     def __init__(self, scenario_path: str | None = None):
