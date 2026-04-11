@@ -52,7 +52,14 @@ def test_safe_score():
 def test_compute_score_edge_cases():
     print("\n=== Test compute_score() edge cases ===")
     
-    for scenario_id in ["easy", "medium", "hard"]:
+    for scenario_id in [
+        "easy",
+        "medium",
+        "hard",
+        "easy_iam_escalation",
+        "medium_lateral_movement",
+        "hard_advanced_persistence",
+    ]:
         env = make_env(scenario_id)
         
         # Case 1: No flags at all

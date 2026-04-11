@@ -24,10 +24,16 @@ class CloudForensicEnv:
             "easy": "easy_iam_escalation.json",
             "medium": "medium_lateral_movement.json",
             "hard": "hard_advanced_persistence.json",
+            "easy_iam_escalation": "easy_iam_escalation.json",
+            "medium_lateral_movement": "medium_lateral_movement.json",
+            "hard_advanced_persistence": "hard_advanced_persistence.json",
         }
         file_name = scenario_map.get(scenario_id)
         if file_name is None:
-            raise ValueError(f"Unknown scenario_id '{scenario_id}'. Expected one of: easy, medium, hard")
+            raise ValueError(
+                f"Unknown scenario_id '{scenario_id}'. Expected one of: "
+                "easy, medium, hard, easy_iam_escalation, medium_lateral_movement, hard_advanced_persistence"
+            )
 
         candidates = [
             Path(__file__).resolve().parent / "attack_scenarios" / file_name,
