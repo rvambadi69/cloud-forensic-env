@@ -17,12 +17,14 @@ class CloudForensicEnv:
         self.ground_truth_path = []
         self.services = []
         self.alerts = []
+        self._original_scenario_path = None  # Remember the original scenario
         self._reset_state()
 
         if scenario_path is None:
             scenario_id = os.getenv("OPENENV_SCENARIO", "easy")
             scenario_path = self._scenario_path_from_id(scenario_id)
 
+        self._original_scenario_path = scenario_path
         self._load_scenario(scenario_path)
 
     def _load_scenario(self, scenario_path: str) -> None:
@@ -104,9 +106,9 @@ class CloudForensicEnv:
     async def reset(self) -> Observation:
         self._reset_state()
 
-        if not self.logs:
-            scenario_id = os.getenv("OPENENV_SCENARIO", "easy")
-            self._load_scenario(self._scenario_path_from_id(scenario_id))
+        if not self.logs and self._original_scenario_path:
+            # Use the original scenario path, not the environment variable
+            self._load_scenario(self._original_scenario_path)
 
         if not self.logs:
             raise RuntimeError("No logs loaded for scenario; cannot reset environment")
