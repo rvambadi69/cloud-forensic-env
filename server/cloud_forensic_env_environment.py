@@ -4,9 +4,11 @@ import os
 from typing import Dict, Any
 from pathlib import Path
 try:
-    from cloud_forensic_env.models import Observation, Action, EnvironmentState, LogEntry
+    from cloud_forensic_env.models import Observation, Action, LogEntry
 except ImportError:
-    from models import Observation, Action, EnvironmentState, LogEntry
+    from models import Observation, Action, LogEntry
+
+from openenv.core.env_server.types import State as OpenEnvState
 
 class CloudForensicEnv:
     def __init__(self, scenario_path: str | None = None):
@@ -120,7 +122,7 @@ class CloudForensicEnv:
             done=False,
         )
 
-    async def step(self, action: Action) -> Any:
+    async def step(self, action: Action) -> Observation:
         if self.done:
             raise RuntimeError("Episode already finished. Call reset().")
 
@@ -169,24 +171,23 @@ class CloudForensicEnv:
             reward=final_step_reward,
             done=self.done,
         )
+        return obs
 
-        # OpenEnv expects: (observation, reward, done, info)
-        info = {
-            "investigation_notes": self.investigation_notes,
-            "flags_made": list(self.flags_made),
-        }
-        return obs, final_step_reward, self.done, info
-
-    def state(self):
-        return {
-            "scenario_id": self.scenario_data.get("scenario_id", "default_id"),
-            "current_step": self.current_step,
-            "logs_analyzed": self.logs_analyzed,
-            "flags_made": self.flags_made,
-            "attack_path_ground_truth": self.ground_truth_path,
-            "reward_accumulated": self.reward_total,
-            "done": self.done,
-        }
+    @property
+    def state(self) -> OpenEnvState:
+        """OpenEnv HTTP /state expects a property returning a Pydantic State model."""
+        return OpenEnvState.model_validate(
+            {
+                "episode_id": None,
+                "step_count": self.current_step,
+                "scenario_id": self.scenario_data.get("scenario_id", "default_id"),
+                "logs_analyzed": list(self.logs_analyzed),
+                "flags_made": list(self.flags_made),
+                "attack_path_ground_truth": list(self.ground_truth_path),
+                "reward_accumulated": self.reward_total,
+                "done": self.done,
+            }
+        )
     
     def get_metadata(self):
         return {
@@ -202,7 +203,7 @@ class CloudForensicEnv:
     async def reset_async(self) -> Observation:
         return await self.reset()
 
-    async def step_async(self, action: Action) -> Any:
+    async def step_async(self, action: Action) -> Observation:
         return await self.step(action)
 
     async def close_async(self) -> None:
