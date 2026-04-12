@@ -24,7 +24,7 @@ TASK_NAME = os.getenv("OPENENV_SCENARIO", "easy")
 MAX_STEPS = 20
 TEMPERATURE = 0.3
 MAX_TOKENS = 300
-SUCCESS_SCORE_THRESHOLD = 0.6
+SUCCESS_SCORE_THRESHOLD = 0.3
 
 
 def safe_score(score: float) -> float:

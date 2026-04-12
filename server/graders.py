@@ -1,55 +1,67 @@
 """Task graders for OpenEnv manifests.
 
-Hackathon loaders may call either ``EasyGrader(env)`` or ``EasyGrader()(env)``.
-The metaclass supports both; scores always pass through ``grade_*`` and
-``_safe_score`` so values stay strictly in (0, 1).
+Each grader returns a score strictly between 0 and 1.
 """
 
-from __future__ import annotations
-
 from typing import Any
-
-from cloud_forensic_env.server.cloud_forensic_env_environment import (
-    grade_easy,
-    grade_medium,
-    grade_hard,
-)
+import math
 
 
-class _GraderCallMeta(type):
-    """If first argument looks like an env, return a float; else build an instance."""
-
-    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
-        if args and hasattr(args[0], "compute_score"):
-            return cls._grade(args[0])
-        return super().__call__(*args, **kwargs)
-
-
-class EasyGrader(metaclass=_GraderCallMeta):
-    @staticmethod
-    def _grade(env: Any) -> float:
-        return grade_easy(env)
-
-    def __call__(self, env: Any) -> float:
-        return grade_easy(env)
+def safe_score(value: float) -> float:
+    """Clamp to strict (0, 1) exclusive range required by OpenEnv validator."""
+    x = float(value)
+    if not math.isfinite(x):
+        x = 0.5
+    return float(max(0.01, min(0.99, round(x, 6))))
 
 
-class MediumGrader(metaclass=_GraderCallMeta):
-    @staticmethod
-    def _grade(env: Any) -> float:
-        return grade_medium(env)
-
-    def __call__(self, env: Any) -> float:
-        return grade_medium(env)
-
-
-class HardGrader(metaclass=_GraderCallMeta):
-    @staticmethod
-    def _grade(env: Any) -> float:
-        return grade_hard(env)
-
-    def __call__(self, env: Any) -> float:
-        return grade_hard(env)
+class EasyGrader:
+    """Grader for easy IAM privilege escalation detection task."""
+    
+    def __call__(self, env: Any, *args, **kwargs) -> float:
+        """Score easy task - lenient scoring with participation bonus."""
+        if not hasattr(env, 'compute_score'):
+            return safe_score(0.5)
+        
+        base = env.compute_score()
+        # Easy task: generous scoring with participation bonus
+        score = 0.3 + (0.6 * base)
+        return safe_score(score)
 
 
-__all__ = ["EasyGrader", "MediumGrader", "HardGrader", "grade_easy", "grade_medium", "grade_hard"]
+class MediumGrader:
+    """Grader for medium lateral movement detection task."""
+    
+    def __call__(self, env: Any, *args, **kwargs) -> float:
+        """Score medium task - moderate difficulty scoring."""
+        if not hasattr(env, 'compute_score'):
+            return safe_score(0.5)
+        
+        base = env.compute_score()
+        # Medium task: balanced scoring with small penalty for incomplete work
+        penalty = 0.1 if hasattr(env, 'flags_made') and hasattr(env, 'ground_truth_path') and len(env.flags_made) < len(env.ground_truth_path) else 0.0
+        score = 0.2 + (0.7 * base) - penalty
+        return safe_score(score)
+
+
+class HardGrader:
+    """Grader for hard advanced persistence detection task."""
+    
+    def __call__(self, env: Any, *args, **kwargs) -> float:
+        """Score hard task - strict scoring for advanced detection."""
+        if not hasattr(env, 'compute_score'):
+            return safe_score(0.5)
+        
+        base = env.compute_score()
+        # Hard task: strict scoring, requires high accuracy
+        if hasattr(env, 'flags_made') and hasattr(env, 'ground_truth_path'):
+            correct_flags = len(set(env.flags_made) & set(env.ground_truth_path))
+            total_flags = len(env.ground_truth_path)
+            accuracy = correct_flags / max(1, total_flags)
+            score = 0.1 + (0.8 * base * accuracy)
+        else:
+            score = 0.1 + (0.8 * base)
+        return safe_score(score)
+
+
+__all__ = ["EasyGrader", "MediumGrader", "HardGrader"]

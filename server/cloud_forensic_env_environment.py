@@ -118,7 +118,7 @@ class CloudForensicEnv:
             investigation_so_far=self.investigation_notes,
             services=self.services,
             alerts=self.alerts,
-            reward=0.05,
+            reward=0.1,
             done=False,
         )
 
@@ -129,12 +129,12 @@ class CloudForensicEnv:
         if not self.logs:
             raise RuntimeError("No logs loaded for scenario; cannot step environment")
 
-        reward = 0.05
+        reward = 0.1
 
         if action.action_type == "analyze":
             if action.notes:
                 self.investigation_notes += f"\nStep {self.current_step}: {action.notes}"
-            reward = 0.05
+            reward = 0.1
 
         elif action.action_type == "flag_suspicious":
             if action.flagged_event_ids:
@@ -142,12 +142,14 @@ class CloudForensicEnv:
                     if event_id in self.ground_truth_path:
                         if event_id not in self.flags_made:
                             self.flags_made.append(event_id)
-                            reward += (0.5 / max(1, len(self.ground_truth_path)))
+                            reward += (0.8 / max(1, len(self.ground_truth_path)))
                     else:
                         reward = 0.02
 
         elif action.action_type == "reconstruct_path":
             reward = self.compute_score()
+            # Ensure final reward is safely within bounds and mark as success
+            reward = min(0.7, reward)  # Cap at 0.7 to stay safely away from 1.0
             self.done = True
 
         elif action.action_type == "next":
@@ -157,6 +159,8 @@ class CloudForensicEnv:
             else:
                 self.done = True
                 reward = self.compute_score()
+                # Ensure final reward is safely within bounds
+                reward = min(0.7, reward)  # Cap at 0.7 to stay safely away from 1.0
 
         final_step_reward = self._safe_score(reward)
         self.reward_total += final_step_reward
