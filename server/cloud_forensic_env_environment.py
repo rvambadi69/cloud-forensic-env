@@ -78,7 +78,8 @@ class CloudForensicEnv:
         x = float(value)
         if not math.isfinite(x):
             x = 0.5
-        return float(max(0.01, min(0.99, round(x, 6))))
+        # Use more conservative bounds to ensure strict (0, 1) compliance
+        return float(max(0.05, min(0.95, round(x, 6))))
 
     def compute_score(self) -> float:
         """Calculates progress-based reward. Always returns strictly (0, 1)."""
@@ -117,7 +118,7 @@ class CloudForensicEnv:
             investigation_so_far=self.investigation_notes,
             services=self.services,
             alerts=self.alerts,
-            reward=0.01,
+            reward=0.05,
             done=False,
         )
 
@@ -128,7 +129,7 @@ class CloudForensicEnv:
         if not self.logs:
             raise RuntimeError("No logs loaded for scenario; cannot step environment")
 
-        reward = 0.01
+        reward = 0.05
 
         if action.action_type == "analyze":
             if action.notes:
@@ -208,8 +209,8 @@ def make_env(scenario_id: str = "easy"):
 def grade_easy(env) -> float:
     """Grader for easy task — lenient scoring, clamped to strict (0, 1)."""
     base = env.compute_score()
-    # Easy task: cap at 0.85 to leave headroom
-    return CloudForensicEnv._safe_score(min(0.85, base))
+    # Easy task: cap at 0.8 to leave more headroom
+    return CloudForensicEnv._safe_score(min(0.8, base))
 
 
 def grade_medium(env) -> float:
@@ -217,7 +218,7 @@ def grade_medium(env) -> float:
     base = env.compute_score()
     # Penalize incomplete flag coverage
     penalty = 0.1 if len(env.flags_made) < len(env.ground_truth_path) else 0.0
-    return CloudForensicEnv._safe_score(min(0.9, base - penalty))
+    return CloudForensicEnv._safe_score(min(0.85, base - penalty))
 
 
 def grade_hard(env) -> float:
@@ -226,7 +227,7 @@ def grade_hard(env) -> float:
     # Penalize incomplete reconstruction
     path_match = len(set(env.flags_made) & set(env.ground_truth_path))
     completeness = path_match / max(1, len(env.ground_truth_path))
-    adjusted = base * completeness * 0.9
+    adjusted = base * completeness * 0.8  # More conservative multiplier
     return CloudForensicEnv._safe_score(adjusted)
 
 
