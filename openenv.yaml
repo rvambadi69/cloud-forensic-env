@@ -21,21 +21,21 @@ tasks:
     description: Detect IAM privilege escalation in AWS CloudTrail audit logs by analyzing user actions and flagging suspicious role assumptions
     difficulty: easy
     max_steps: 10
-    grader: cloud_forensic_env.server.graders:grade_easy
+    grader: cloud_forensic_env.server.graders:EasyGrader
 
   - id: medium_lateral_movement
     name: Cross-Service Lateral Movement
     description: Identify cross-service lateral movement across AWS services by tracing attacker activity through multiple cloud resources
     difficulty: medium
     max_steps: 15
-    grader: cloud_forensic_env.server.graders:grade_medium
+    grader: cloud_forensic_env.server.graders:MediumGrader
 
   - id: hard_advanced_persistence
     name: Multi-Stage Attack with Log Tampering
     description: Reconstruct a multi-stage attack path involving advanced persistence techniques and potential log tampering across services
     difficulty: hard
     max_steps: 25
-    grader: cloud_forensic_env.server.graders:grade_hard
+    grader: cloud_forensic_env.server.graders:HardGrader
 
 observation_space:
   type: object

@@ -4,7 +4,9 @@ Local Phase-2-style checks for OpenEnv task graders (manifest + score bounds).
 
 Mirrors common hackathon rules:
   - At least MIN_TASKS tasks, each with a non-empty ``grader`` import path.
-  - Grader must be importable and *callable as* ``grader(env)`` (not ``GraderClass(env)``).
+  - Grader must be importable and invokable as ``fn(env)`` where ``fn`` is either a
+    function or a class whose metaclass supports ``Class(env) -> float`` (and/or
+    ``Class()(env)``).
   - Every sampled score must satisfy: finite and strictly 0 < score < 1.
 
 Run from the environment root (directory containing openenv.yaml):
@@ -45,20 +47,33 @@ def _load_manifest(env_root: Path) -> dict[str, Any]:
     return data
 
 
-def _resolve_grader(spec: str) -> Callable[..., Any]:
+def _invoke_loaded_grader(obj: Any, env: Any) -> float:
+    """Call hackathon-style: ``Class(env)`` or ``fn(env)``; support instance fallback."""
+    if isinstance(obj, type):
+        out = obj(env)
+        if isinstance(out, (int, float)) and not isinstance(out, bool):
+            return float(out)
+        if callable(out):
+            return float(out(env))
+        raise TypeError(
+            f"Grader class {obj!r} with env did not return float or callable, got {type(out).__name__}"
+        )
+    if not callable(obj):
+        raise TypeError(f"Grader is not callable: {obj!r}")
+    return float(obj(env))
+
+
+def _resolve_grader(spec: str) -> Callable[[Any], float]:
     if ":" not in spec:
         raise ValueError(f"Invalid grader spec (expected 'module:callable'): {spec!r}")
     mod_name, attr = spec.split(":", 1)
     module = importlib.import_module(mod_name)
     obj = getattr(module, attr)
-    if isinstance(obj, type):
-        raise ValueError(
-            f"{spec!r} is a class. Validators call grader(env); use a function or "
-            f"functools.partial, not a class that cannot be invoked as Class(env)."
-        )
-    if not callable(obj):
-        raise ValueError(f"{spec!r} is not callable")
-    return obj
+
+    def run(env: Any) -> float:
+        return _invoke_loaded_grader(obj, env)
+
+    return run
 
 
 def _assert_open_unit_interval(name: str, score: Any) -> None:

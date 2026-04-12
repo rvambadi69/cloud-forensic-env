@@ -8,7 +8,6 @@ try:
 except ImportError:
     from models import Observation, Action, LogEntry
 
-from openenv.core.env_server.types import State as OpenEnvState
 
 class CloudForensicEnv:
     def __init__(self, scenario_path: str | None = None):
@@ -174,20 +173,13 @@ class CloudForensicEnv:
         return obs
 
     @property
-    def state(self) -> OpenEnvState:
-        """OpenEnv HTTP /state expects a property returning a Pydantic State model."""
-        return OpenEnvState.model_validate(
-            {
-                "episode_id": None,
-                "step_count": self.current_step,
-                "scenario_id": self.scenario_data.get("scenario_id", "default_id"),
-                "logs_analyzed": list(self.logs_analyzed),
-                "flags_made": list(self.flags_made),
-                "attack_path_ground_truth": list(self.ground_truth_path),
-                "reward_accumulated": self.reward_total,
-                "done": self.done,
-            }
-        )
+    def state(self):
+        """Return a plain dict — avoids OpenEnvState schema validation crashes."""
+        return {
+            "step_count": self.current_step,
+            "done": self.done,
+            "reward_accumulated": self.reward_total,
+        }
     
     def get_metadata(self):
         return {
