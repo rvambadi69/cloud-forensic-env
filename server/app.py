@@ -16,8 +16,15 @@ try:
 except ImportError:
     raise ImportError("openenv-core required. Run: pip install openenv-core")
 
-from cloud_forensic_env.models import CloudForensicAction, CloudForensicObservation
-from cloud_forensic_env.server.cloud_forensic_env_environment import CloudForensicEnvironment
+try:
+    from cloud_forensic_env.models import CloudForensicAction, CloudForensicObservation
+    from cloud_forensic_env.server.cloud_forensic_env_environment import CloudForensicEnvironment
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from models import Action as CloudForensicAction, Observation as CloudForensicObservation
+    from server.cloud_forensic_env_environment import CloudForensicEnvironment
 
 app = create_app(
     CloudForensicEnvironment,
