@@ -1,5 +1,5 @@
 {
-  "scenario_id": "hard_advanced_persistence",
+  "scenario_id": "medium_lateral_movement",
   "description": "Advanced persistent attack involving privilege escalation, backdoor creation, log tampering, and data exfiltration",
 
   "services": ["IAM", "Lambda", "CloudTrail", "EC2", "S3"],
