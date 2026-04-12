@@ -70,7 +70,7 @@ class EasyGrader:
       - Any participation gives at least 0.15
     """
 
-    def __call__(self, env: Any, *args: Any, **kwargs: Any) -> float:
+    def grade(self, env: Any, *args: Any, **kwargs: Any) -> float:
         base = _base_score(env)
         variation = get_variation_seed(env, self.__class__.__name__)
         # Map [0,1] -> [0.15, 0.82]: enough room on both ends
@@ -88,7 +88,7 @@ class MediumGrader:
       - Incomplete coverage subtracts 0.07
     """
 
-    def __call__(self, env: Any, *args: Any, **kwargs: Any) -> float:
+    def grade(self, env: Any, *args: Any, **kwargs: Any) -> float:
         base = _base_score(env)
         variation = get_variation_seed(env, self.__class__.__name__)
         flags = list(getattr(env, "flags_made", []))
@@ -114,7 +114,7 @@ class HardGrader:
       - Hardest to score high — intentionally compressed range
     """
 
-    def __call__(self, env: Any, *args: Any, **kwargs: Any) -> float:
+    def grade(self, env: Any, *args: Any, **kwargs: Any) -> float:
         base = _base_score(env)
         variation = get_variation_seed(env, self.__class__.__name__)
         flags = list(getattr(env, "flags_made", []))
