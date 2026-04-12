@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from typing import Dict, Any
 from pathlib import Path
@@ -73,7 +74,10 @@ class CloudForensicEnv:
     @staticmethod
     def _safe_score(value: float) -> float:
         """Clamp to strict (0, 1) exclusive range required by OpenEnv validator."""
-        return max(0.01, min(0.99, round(float(value), 6)))
+        x = float(value)
+        if not math.isfinite(x):
+            x = 0.5
+        return float(max(0.01, min(0.99, round(x, 6))))
 
     def compute_score(self) -> float:
         """Calculates progress-based reward. Always returns strictly (0, 1)."""

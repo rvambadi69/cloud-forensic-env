@@ -46,4 +46,5 @@ packages = ["cloud_forensic_env", "cloud_forensic_env.server"]
 package-dir = { "cloud_forensic_env" = ".", "cloud_forensic_env.server" = "server" }
 
 [tool.setuptools.package-data]
+"cloud_forensic_env" = ["openenv.yaml"]
 "cloud_forensic_env.server" = ["attack_scenarios/*.json"]
