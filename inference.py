@@ -13,12 +13,8 @@ PARENT_DIR = PROJECT_ROOT.parent
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-try:
-    from cloud_forensic_env.models import Action
-    from cloud_forensic_env.server.cloud_forensic_env_environment import make_env
-except ImportError:
-    from models import Action
-    from server.cloud_forensic_env_environment import make_env
+from cloud_forensic_env.models import Action
+from cloud_forensic_env.server.cloud_forensic_env_environment import make_env
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")

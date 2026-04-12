@@ -8,18 +8,28 @@ except ImportError:
     from models import Observation, Action, EnvironmentState, LogEntry
 
 class CloudForensicEnv:
-    def _init_(self, scenario_path: str | None = None):
+    def __init__(self, scenario_path: str | None = None):
+        # Initialize fields up-front so reset/step never hit missing attributes.
+        self.scenario_data = {}
+        self.logs = []
+        self.ground_truth_path = []
+        self.services = []
+        self.alerts = []
+        self._reset_state()
+
         if scenario_path is None:
             scenario_id = os.getenv("OPENENV_SCENARIO", "easy")
             scenario_path = self._scenario_path_from_id(scenario_id)
 
+        self._load_scenario(scenario_path)
+
+    def _load_scenario(self, scenario_path: str) -> None:
         with open(scenario_path, 'r') as f:
             self.scenario_data = json.load(f)
         self.logs = [LogEntry(**log) for log in self.scenario_data['logs']]
         self.ground_truth_path = self.scenario_data['attack_path']
         self.services = self.scenario_data.get("services", [])
         self.alerts = [self.scenario_data.get("description", "")]
-        self._reset_state()
 
     @staticmethod
     def _scenario_path_from_id(scenario_id: str) -> str:
@@ -39,7 +49,7 @@ class CloudForensicEnv:
             )
 
         candidates = [
-            Path(_file_).resolve().parent / "attack_scenarios" / file_name,
+            Path(__file__).resolve().parent / "attack_scenarios" / file_name,
             Path("/app/env/server/attack_scenarios") / file_name,
             Path.cwd() / "server" / "attack_scenarios" / file_name,
         ]
@@ -59,11 +69,14 @@ class CloudForensicEnv:
         self.done = False
         self.investigation_notes = ""
 
+    # --- WINNING LOGIC: THE GRADER ---
     @staticmethod
     def _safe_score(value: float) -> float:
-        return max(0.001, min(0.999, round(float(value), 6)))
+        """Clamp to strict (0, 1) exclusive range required by OpenEnv validator."""
+        return max(0.01, min(0.99, round(float(value), 6)))
 
     def compute_score(self) -> float:
+        """Calculates progress-based reward. Always returns strictly (0, 1)."""
         if not self.ground_truth_path:
             return self._safe_score(0.5)
 
@@ -77,12 +90,21 @@ class CloudForensicEnv:
         progress = correct_flags / total
         penalty = wrong_flags / total
 
+        # Base score of 0.2 for participation, up to 0.8 for accuracy
         score = 0.2 + (0.6 * progress) - (0.2 * penalty)
 
         return self._safe_score(score)
 
     async def reset(self) -> Observation:
         self._reset_state()
+
+        if not self.logs:
+            scenario_id = os.getenv("OPENENV_SCENARIO", "easy")
+            self._load_scenario(self._scenario_path_from_id(scenario_id))
+
+        if not self.logs:
+            raise RuntimeError("No logs loaded for scenario; cannot reset environment")
+
         return Observation(
             current_log_index=0,
             total_logs=len(self.logs),
@@ -98,12 +120,15 @@ class CloudForensicEnv:
         if self.done:
             raise RuntimeError("Episode already finished. Call reset().")
 
-        reward = 0.01 
+        if not self.logs:
+            raise RuntimeError("No logs loaded for scenario; cannot step environment")
+
+        reward = 0.01
 
         if action.action_type == "analyze":
             if action.notes:
                 self.investigation_notes += f"\nStep {self.current_step}: {action.notes}"
-            reward = 0.05 
+            reward = 0.05
 
         elif action.action_type == "flag_suspicious":
             if action.flagged_event_ids:
@@ -111,9 +136,9 @@ class CloudForensicEnv:
                     if event_id in self.ground_truth_path:
                         if event_id not in self.flags_made:
                             self.flags_made.append(event_id)
-                            reward += (0.5 / max(1,len(self.ground_truth_path)))
+                            reward += (0.5 / max(1, len(self.ground_truth_path)))
                     else:
-                        reward = 0.02 
+                        reward = 0.02
 
         elif action.action_type == "reconstruct_path":
             reward = self.compute_score()
@@ -140,26 +165,32 @@ class CloudForensicEnv:
             reward=final_step_reward,
             done=self.done,
         )
-        
-        # OpenEnv strictly requires returning a tuple: (observation, reward, done, info)
-        return obs, final_step_reward, self.done, {"investigation_notes": self.investigation_notes}
 
-    def state(self) -> dict:
+        # OpenEnv expects: (observation, reward, done, info)
+        info = {
+            "investigation_notes": self.investigation_notes,
+            "flags_made": list(self.flags_made),
+        }
+        return obs, final_step_reward, self.done, info
+
+    def state(self):
         return {
-            "scenario_id": self.scenario_data.get('scenario_id', 'default_id'),
+            "scenario_id": self.scenario_data.get("scenario_id", "default_id"),
             "current_step": self.current_step,
             "logs_analyzed": self.logs_analyzed,
             "flags_made": self.flags_made,
             "attack_path_ground_truth": self.ground_truth_path,
             "reward_accumulated": self.reward_total,
-            "done": self.done
+            "done": self.done,
         }
     
     def get_metadata(self):
         return {
             "name": "cloud_forensic_env",
-            "description": "Cloud forensic investigation environment"  
-        }
+            "description": "Cloud forensic investigation environment"    
+       }
+
+
 
     def close(self) -> None:
         pass
@@ -176,20 +207,30 @@ class CloudForensicEnv:
 def make_env(scenario_id: str = "easy"):
     return CloudForensicEnv(CloudForensicEnv._scenario_path_from_id(scenario_id))
 
+
 def grade_easy(env) -> float:
+    """Grader for easy task — lenient scoring, clamped to strict (0, 1)."""
     base = env.compute_score()
+    # Easy task: cap at 0.85 to leave headroom
     return CloudForensicEnv._safe_score(min(0.85, base))
 
+
 def grade_medium(env) -> float:
+    """Grader for medium task — moderate penalty, clamped to strict (0, 1)."""
     base = env.compute_score()
+    # Penalize incomplete flag coverage
     penalty = 0.1 if len(env.flags_made) < len(env.ground_truth_path) else 0.0
     return CloudForensicEnv._safe_score(min(0.9, base - penalty))
 
+
 def grade_hard(env) -> float:
+    """Grader for hard task — strict scoring, clamped to strict (0, 1)."""
     base = env.compute_score()
+    # Penalize incomplete reconstruction
     path_match = len(set(env.flags_made) & set(env.ground_truth_path))
     completeness = path_match / max(1, len(env.ground_truth_path))
     adjusted = base * completeness * 0.9
     return CloudForensicEnv._safe_score(adjusted)
+
 
 CloudForensicEnvironment = CloudForensicEnv

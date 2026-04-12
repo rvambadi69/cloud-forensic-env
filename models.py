@@ -19,7 +19,7 @@ class Observation(BaseModel):
     investigation_so_far: str
     services: List[str] = []
     alerts: List[str] = []
-    reward: float = 0.0   # required by OpenEnv server
+    reward: float = 0.01
     done: bool = False
 
 class Action(BaseModel):
